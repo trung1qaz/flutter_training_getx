@@ -1,14 +1,13 @@
-
 import 'package:get/get.dart';
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:sds_mobile_training_p2/data/user.dart';
 import 'dart:convert';
-import '../controller/product_controller.dart';
+import '../../core/constants.dart';
+import '../product/product_controller.dart';
 
 class AuthController extends GetxController {
-
   var isLoading = false.obs;
   var isAuthenticated = false.obs;
   var token = Rxn<String>();
@@ -19,8 +18,6 @@ class AuthController extends GetxController {
   final taxCtrl = TextEditingController();
   final userCtrl = TextEditingController();
   final passCtrl = TextEditingController();
-
-
   final formKey = GlobalKey<FormState>();
   var autovalidateMode = AutovalidateMode.disabled.obs;
 
@@ -50,8 +47,8 @@ class AuthController extends GetxController {
       }
 
       recentUsers.value = List<User>.from(userList);
-
       final currentUserData = box.get('currentUser');
+
       if (currentUserData != null) {
         currentUser.value = User(
           taxCtrl: currentUserData['tax_code'],
@@ -74,7 +71,8 @@ class AuthController extends GetxController {
       errorMessage.value = '';
 
       final dio = Dio();
-      final url = "https://training-api-unrp.onrender.com/login2";
+      final url = AppConstants.baseUrl + AppConstants.loginEndpoint; // Updated
+
       final body = jsonEncode({
         "tax_code": int.tryParse(taxCtrl.text),
         "user_name": userCtrl.text.trim(),
@@ -94,6 +92,7 @@ class AuthController extends GetxController {
         );
 
         currentUser.value = newUser;
+
         recentUsers.removeWhere((u) =>
         u.taxCtrl == newUser.taxCtrl && u.userCtrl == newUser.userCtrl);
         recentUsers.add(newUser);
@@ -105,8 +104,8 @@ class AuthController extends GetxController {
           'tax_code': int.parse(taxCtrl.text),
           'user_name': userCtrl.text,
         });
-        Get.offAllNamed('/home');
 
+        Get.offAllNamed('/home');
         Get.snackbar(
           'Thành công',
           'Đăng nhập thành công',
@@ -207,5 +206,29 @@ class AuthController extends GetxController {
     passCtrl.clear();
     autovalidateMode.value = AutovalidateMode.disabled;
     errorMessage.value = '';
+  }
+
+  // Validation methods using constants
+  String? validateTaxCode(String? value) {
+    if (value == null || value.trim().length != AppConstants.taxCodeLength) {
+      return "Mã số thuế phải có ${AppConstants.taxCodeLength} chữ số";
+    }
+    return null;
+  }
+
+  String? validateUsername(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return "Tên đăng nhập không được để trống";
+    }
+    return null;
+  }
+
+  String? validatePassword(String? value) {
+    if (value == null ||
+        value.trim().length < AppConstants.minPasswordLength ||
+        value.trim().length > AppConstants.maxPasswordLength) {
+      return "Mật khẩu phải từ ${AppConstants.minPasswordLength} đến ${AppConstants.maxPasswordLength} ký tự";
+    }
+    return null;
   }
 }
