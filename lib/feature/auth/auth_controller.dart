@@ -1,14 +1,13 @@
 import 'package:get/get.dart';
 import 'package:flutter/material.dart';
-import 'package:dio/dio.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:sds_mobile_training_p2/data/user.dart';
-import 'dart:convert';
+import '../../core/api_client.dart';
 import '../../core/constants.dart';
 import '../product/product_controller.dart';
 
 class AuthController extends GetxController {
-  var isLoading = false.obs;
+  final isLoading = false.obs;
   var isAuthenticated = false.obs;
   var token = Rxn<String>();
   var currentUser = Rxn<User>();
@@ -39,16 +38,21 @@ class AuthController extends GetxController {
     try {
       final box = Hive.box('authBox');
       final savedToken = box.get('authToken');
-      final userList = box.get('userList', defaultValue: []);
+      final userList = box.get('userList', defaultValue: <Map>[]);
 
       if (savedToken != null) {
         token.value = savedToken;
         isAuthenticated.value = true;
       }
 
-      recentUsers.value = List<User>.from(userList);
-      final currentUserData = box.get('currentUser');
+      recentUsers.value = List<User>.from(
+        userList.map((userData) => User(
+          taxCtrl: userData['tax_code'],
+          userCtrl: userData['user_name'],
+        )),
+      );
 
+      final currentUserData = box.get('currentUser');
       if (currentUserData != null) {
         currentUser.value = User(
           taxCtrl: currentUserData['tax_code'],
@@ -70,68 +74,74 @@ class AuthController extends GetxController {
       isLoading.value = true;
       errorMessage.value = '';
 
-      final dio = Dio();
-      final url = AppConstants.baseUrl + AppConstants.loginEndpoint; // Updated
+      // Use the new ApiClient method that returns raw dynamic data
+      final response = await ApiClient.post(
+        AppConstants.loginEndpoint,
+        data: {
+          "tax_code": int.tryParse(taxCtrl.text),
+          "user_name": userCtrl.text.trim(),
+          "password": passCtrl.text.trim(),
+        },
+      );
 
-      final body = jsonEncode({
-        "tax_code": int.tryParse(taxCtrl.text),
-        "user_name": userCtrl.text.trim(),
-        "password": passCtrl.text.trim(),
-      });
+      if (response['success'] == true && response['data'] != null) {
+        final data = response['data'] as Map<String, dynamic>;
+        if (data["success"] == true) {
+          token.value = data["data"]["token"];
+          isAuthenticated.value = true;
 
-      final response = await dio.post(url, data: body);
-      final data = response.data;
+          final newUser = User(
+            taxCtrl: int.parse(taxCtrl.text),
+            userCtrl: userCtrl.text,
+          );
+          currentUser.value = newUser;
 
-      if (response.statusCode == 200 && data["success"] == true) {
-        token.value = data["data"]["token"];
-        isAuthenticated.value = true;
+          recentUsers.removeWhere((u) =>
+          u.taxCtrl == newUser.taxCtrl && u.userCtrl == newUser.userCtrl);
+          recentUsers.add(newUser);
 
-        final newUser = User(
-          taxCtrl: int.parse(taxCtrl.text),
-          userCtrl: userCtrl.text,
-        );
+          // Save to Hive
+          final box = Hive.box('authBox');
+          box.put('userList', recentUsers.map((user) => {
+            'tax_code': user.taxCtrl,
+            'user_name': user.userCtrl,
+          }).toList());
+          box.put('authToken', token.value);
+          box.put('currentUser', {
+            'tax_code': int.parse(taxCtrl.text),
+            'user_name': userCtrl.text,
+          });
 
-        currentUser.value = newUser;
-
-        recentUsers.removeWhere((u) =>
-        u.taxCtrl == newUser.taxCtrl && u.userCtrl == newUser.userCtrl);
-        recentUsers.add(newUser);
-
-        final box = Hive.box('authBox');
-        box.put('userList', recentUsers.toList());
-        box.put('authToken', token.value);
-        box.put('currentUser', {
-          'tax_code': int.parse(taxCtrl.text),
-          'user_name': userCtrl.text,
-        });
-
-        Get.offAllNamed('/home');
-        Get.snackbar(
-          'Thành công',
-          'Đăng nhập thành công',
-          backgroundColor: Colors.green,
-          colorText: Colors.white,
-        );
+          Get.offAllNamed('/home');
+          Get.snackbar(
+            'Thành công',
+            'Đăng nhập thành công',
+            backgroundColor: Colors.green,
+            colorText: Colors.white,
+          );
+        } else {
+          errorMessage.value = "Đăng nhập thất bại, sai tên đăng nhập hoặc mật khẩu";
+          _showErrorSnackbar(errorMessage.value);
+        }
       } else {
-        errorMessage.value = "Đăng nhập thất bại, sai tên đăng nhập hoặc mật khẩu";
-        Get.snackbar(
-          'Lỗi',
-          errorMessage.value,
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
-        );
+        errorMessage.value = response['error'] ?? "Đăng nhập thất bại";
+        _showErrorSnackbar(errorMessage.value);
       }
     } catch (e) {
       errorMessage.value = "Lỗi kết nối: ${e.toString()}";
-      Get.snackbar(
-        'Lỗi kết nối',
-        errorMessage.value,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
+      _showErrorSnackbar(errorMessage.value);
     } finally {
       isLoading.value = false;
     }
+  }
+
+  void _showErrorSnackbar(String message) {
+    Get.snackbar(
+      'Lỗi',
+      message,
+      backgroundColor: Colors.red,
+      colorText: Colors.white,
+    );
   }
 
   void showRecentLoginsDialog() {
@@ -180,19 +190,19 @@ class AuthController extends GetxController {
   void removeRecentUser(int index) {
     recentUsers.removeAt(index);
     final box = Hive.box('authBox');
-    box.put('userList', recentUsers.toList());
+    box.put('userList', recentUsers.map((user) => {
+      'tax_code': user.taxCtrl,
+      'user_name': user.userCtrl,
+    }).toList());
   }
 
-  @override
   void logout() {
     token.value = null;
     currentUser.value = null;
     isAuthenticated.value = false;
-
     final box = Hive.box('authBox');
     box.delete('authToken');
     box.delete('currentUser');
-
     if (Get.isRegistered<ProductController>()) {
       Get.delete<ProductController>();
     }

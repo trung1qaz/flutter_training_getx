@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
-import '../../core/base_ui.dart';
+import '../../core/ui/base_button.dart';
+import '../../core/ui/base_input_field.dart';
+import '../../core/ui/base_ui.dart';
 import 'auth_controller.dart';
 
 class LoginScreen extends StatelessWidget {

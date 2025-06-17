@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import '../../core/ui/base_button.dart';
+import '../../core/ui/base_card.dart';
+import '../../core/ui/base_error.dart';
+import '../../core/ui/base_loading.dart';
 import '../../core/product_image.dart';
-import '../../core/base_ui.dart';
+import '../../core/ui/base_ui.dart';
 import 'product_controller.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends GetView<ProductController> {
   const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final ProductController controller = Get.put(ProductController());
-
     return Scaffold(
       appBar: AppBar(
         title: const Text("Quản lý sản phẩm"),
@@ -20,7 +22,7 @@ class HomeScreen extends StatelessWidget {
             icon: const Icon(Icons.refresh),
             tooltip: 'Tải lại',
             onPressed: () {
-              print('Refresh button pressed'); // Debug log
+              print('Refresh button pressed');
               controller.refreshData();
             },
           ),
@@ -32,25 +34,25 @@ class HomeScreen extends StatelessWidget {
         ],
       ),
       body: Obx(() {
-        print('Building home screen - Loading: ${controller.isLoading.value}, Products: ${controller.products.length}'); // Debug log
+        print('Building home screen - Loading: ${controller.isLoading.value}, Products: ${controller.products.length}');
 
         if (controller.isLoading.value) {
           return const BaseLoading(message: 'Đang tải dữ liệu...');
         }
 
         if (controller.errorMessage.isNotEmpty) {
-          print('Error message: ${controller.errorMessage.value}'); // Debug log
+          print('Error message: ${controller.errorMessage.value}');
           return BaseError(
             message: controller.errorMessage.value,
             onRetry: () {
-              print('Retry button pressed'); // Debug log
+              print('Retry button pressed');
               controller.fetchData();
             },
           );
         }
 
         if (controller.products.isEmpty) {
-          print('No products found'); // Debug log
+          print('No products found');
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -68,7 +70,7 @@ class HomeScreen extends StatelessWidget {
           );
         }
 
-        print('Displaying ${controller.products.length} products'); // Debug log
+        print('Displaying ${controller.products.length} products');
         return RefreshIndicator(
           onRefresh: controller.refreshData,
           child: ListView.builder(
@@ -77,7 +79,7 @@ class HomeScreen extends StatelessWidget {
             itemBuilder: (context, index) {
               try {
                 final product = controller.products[index];
-                print('Building product at index $index: ${product.name}'); // Debug log
+                print('Building product at index $index: ${product.name}');
 
                 return BaseCard(
                   onTap: () => controller.navigateToProductDetail(product),
@@ -110,7 +112,7 @@ class HomeScreen extends StatelessWidget {
                   ),
                 );
               } catch (e) {
-                print('Error building product at index $index: $e'); // Debug log
+                print('Error building product at index $index: $e');
                 return Container(
                   padding: const EdgeInsets.all(16),
                   child: Text('Error loading product: $e'),

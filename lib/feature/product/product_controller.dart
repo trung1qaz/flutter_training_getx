@@ -1,14 +1,10 @@
-import 'package:dio/dio.dart';
 import 'package:get/get.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:sds_mobile_training_p2/feature/product/product_detail_screen.dart';
-
-import '../../core/api_client.dart';
-import '../../core/constants.dart';
-import '../../core/base_ui.dart';
+import 'package:sds_mobile_training_p2/feature/product/product_repository.dart';
+import '../../core/ui/base_ui.dart';
 import '../auth/auth_controller.dart';
-import 'dart:convert';
 
 class Product {
   final int id;
@@ -59,14 +55,11 @@ class ProductController extends GetxController {
       isLoading.value = true;
       errorMessage.value = '';
 
-      final response = await ApiClient.get<Map<String, dynamic>>(
-        '${AppConstants.productsEndpoint}?page=2&size=10',
-            (data) => data as Map<String, dynamic>,
-      );
+      final response = await ProductRepository.getProducts(page: 2, size: 10);
 
-      if (response.success && response.data != null) {
-        final responseData = response.data!;
-        final List<dynamic> productListData = responseData['data'] ?? [];
+      if (response['success'] == true && response['data'] != null) {
+        final responseData = response['data'] as Map<String, dynamic>;
+        final List productListData = responseData['data'] ?? [];
 
         final productList = productListData.map((item) {
           return Product(
@@ -80,13 +73,13 @@ class ProductController extends GetxController {
 
         products.value = productList;
       } else {
-        errorMessage.value = response.error ?? 'Failed to load products';
+        errorMessage.value = response['error'] ?? 'Failed to load products';
         _showErrorSnackbar(errorMessage.value);
       }
     } catch (e) {
       errorMessage.value = 'Error loading products: ${e.toString()}';
       _showErrorSnackbar(errorMessage.value);
-      print('Fetch data error: $e'); // Add this for debugging
+      print('Fetch data error: $e');
     } finally {
       isLoading.value = false;
     }
@@ -107,37 +100,28 @@ class ProductController extends GetxController {
     try {
       isSubmitting.value = true;
 
-      final newProduct = Product(
-        id: nextId.value++,
+      final response = await ProductRepository.addProduct(
         name: nameCtrl.text.trim(),
         price: int.parse(priceCtrl.text),
         quantity: int.parse(quantityCtrl.text),
         cover: coverCtrl.text.trim(),
       );
 
-      final response = await ApiClient.post<Product>(
-        AppConstants.productsEndpoint,
-            (data) => Product(
-          id: data['id'] ?? newProduct.id,
-          name: data['name'] ?? newProduct.name,
-          price: data['price'] ?? newProduct.price,
-          quantity: data['quantity'] ?? newProduct.quantity,
-          cover: data['cover'] ?? newProduct.cover,
-        ),
-        data: jsonEncode({
-          'name': newProduct.name,
-          'price': newProduct.price,
-          'quantity': newProduct.quantity,
-          'cover': newProduct.cover,
-        }),
-      );
+      if (response['success'] == true && response['data'] != null) {
+        final productData = response['data'];
+        final newProduct = Product(
+          id: productData['id'] ?? nextId.value++,
+          name: productData['name'] ?? nameCtrl.text.trim(),
+          price: productData['price'] ?? int.parse(priceCtrl.text),
+          quantity: productData['quantity'] ?? int.parse(quantityCtrl.text),
+          cover: productData['cover'] ?? coverCtrl.text.trim(),
+        );
 
-      if (response.success && response.data != null) {
-        products.add(response.data!);
+        products.add(newProduct);
         Get.back();
         _showSuccessSnackbar('Thêm sản phẩm thành công');
       } else {
-        _showErrorSnackbar(response.error ?? 'Failed to add product');
+        _showErrorSnackbar(response['error'] ?? 'Failed to add product');
       }
     } catch (e) {
       _showErrorSnackbar('Lỗi thêm sản phẩm: $e');
@@ -168,13 +152,13 @@ class ProductController extends GetxController {
 
     if (shouldDelete == true) {
       try {
-        final response = await ApiClient.delete('${AppConstants.productsEndpoint}/${product.id}');
+        final response = await ProductRepository.deleteProduct(product.id);
 
-        if (response.success) {
+        if (response['success'] == true) {
           products.removeAt(index);
           _showSuccessSnackbar('Xóa sản phẩm thành công');
         } else {
-          _showErrorSnackbar(response.error ?? 'Failed to delete product');
+          _showErrorSnackbar(response['error'] ?? 'Failed to delete product');
         }
       } catch (e) {
         _showErrorSnackbar('Lỗi xóa sản phẩm: $e');
@@ -256,11 +240,9 @@ class ProductController extends GetxController {
     final box = Hive.box('authBox');
     box.delete('authToken');
     box.delete('currentUser');
-
     if (Get.isRegistered<AuthController>()) {
       Get.find<AuthController>().logout();
     }
-
     Get.offAllNamed('/login');
   }
 

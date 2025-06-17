@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
-import 'dart:convert';
+import 'package:get/get.dart';
 import 'package:sds_mobile_training_p2/feature/product/product_controller.dart';
-import '../../core/api_client.dart';
-import '../../core/constants.dart';
-import '../../core/base_response.dart';
+import 'package:sds_mobile_training_p2/feature/product/product_repository.dart';
+import '../../core/ui/base_ui.dart';
 
-// Helper function to safely parse values
 int _safeParseInt(dynamic value) {
   if (value == null) return 0;
   if (value is int) return value;
@@ -19,24 +17,20 @@ String _safeParseString(dynamic value) {
   return value.toString();
 }
 
-// Fixed API functions with better error handling
 Future<Product> updateProductInApi(Product product) async {
   try {
-    final response = await ApiClient.put<Map<String, dynamic>>(
-      '${AppConstants.productsEndpoint}/${product.id}',
-          (data) => data as Map<String, dynamic>,
-      data: jsonEncode({
-        'name': product.name,
-        'price': product.price,
-        'quantity': product.quantity,
-        'cover': product.cover,
-      }),
+    final response = await ProductRepository.updateProduct(
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      quantity: product.quantity,
+      cover: product.cover,
     );
 
-    print('Update API Response: ${response.success}, Data: ${response.data}'); // Debug
+    print('Update API Response: ${response['success']}, Data: ${response['data']}');
 
-    if (response.success && response.data != null) {
-      final data = response.data!;
+    if (response['success'] == true && response['data'] != null) {
+      final data = response['data'];
       return Product(
         id: _safeParseInt(data['id']) != 0 ? _safeParseInt(data['id']) : product.id,
         name: _safeParseString(data['name']).isNotEmpty ? _safeParseString(data['name']) : product.name,
@@ -45,47 +39,41 @@ Future<Product> updateProductInApi(Product product) async {
         cover: _safeParseString(data['cover']).isNotEmpty ? _safeParseString(data['cover']) : product.cover,
       );
     } else {
-      throw Exception(response.error ?? 'Failed to update product');
+      throw Exception(response['error'] ?? 'Failed to update product');
     }
   } catch (e) {
-    print('Update Product Error: $e'); // Debug
+    print('Update Product Error: $e');
     throw Exception('Failed to update product: $e');
   }
 }
 
 Future<bool> deleteProductFromApi(int productId) async {
   try {
-    final response = await ApiClient.delete('${AppConstants.productsEndpoint}/$productId');
-    print('Delete API Response: ${response.success}'); // Debug
+    final response = await ProductRepository.deleteProduct(productId);
+    print('Delete API Response: ${response['success']}');
 
-    if (response.success) {
+    if (response['success'] == true) {
       return true;
     } else {
-      throw Exception(response.error ?? 'Failed to delete product');
+      throw Exception(response['error'] ?? 'Failed to delete product');
     }
   } catch (e) {
-    print('Delete Product Error: $e'); // Debug
+    print('Delete Product Error: $e');
     throw Exception('Failed to delete product: $e');
   }
 }
 
 Future<Product> getProductDetails(int productId) async {
   try {
-    print('Fetching product details for ID: $productId'); // Debug
+    print('Fetching product details for ID: $productId');
+    final response = await ProductRepository.getProductById(productId);
 
-    final response = await ApiClient.get<Map<String, dynamic>>(
-      '${AppConstants.productsEndpoint}/$productId',
-          (data) => data as Map<String, dynamic>,
-    );
+    print('Product Details API Response: ${response['success']}');
+    print('Product Details API Data: ${response['data']}');
+    print('Product Details API Error: ${response['error']}');
 
-    print('Product Details API Response: ${response.success}'); // Debug
-    print('Product Details API Data: ${response.data}'); // Debug
-    print('Product Details API Error: ${response.error}'); // Debug
-
-    if (response.success && response.data != null) {
-      final data = response.data!;
-
-      // Handle nested data structure if API returns {data: {product_info}}
+    if (response['success'] == true && response['data'] != null) {
+      final data = response['data'];
       final productData = data['data'] ?? data;
 
       final product = Product(
@@ -96,13 +84,13 @@ Future<Product> getProductDetails(int productId) async {
         cover: _safeParseString(productData['cover']),
       );
 
-      print('Parsed Product: ID=${product.id}, Name=${product.name}, Price=${product.price}'); // Debug
+      print('Parsed Product: ID=${product.id}, Name=${product.name}, Price=${product.price}');
       return product;
     } else {
-      throw Exception(response.error ?? 'Failed to load product details');
+      throw Exception(response['error'] ?? 'Failed to load product details');
     }
   } catch (e) {
-    print('Get Product Details Error: $e'); // Debug
+    print('Get Product Details Error: $e');
     throw Exception('Failed to load product details: $e');
   }
 }
@@ -125,7 +113,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   void initState() {
     super.initState();
     currentProduct = widget.product;
-    print('Initial Product: ID=${currentProduct.id}, Name=${currentProduct.name}'); // Debug
+    print('Initial Product: ID=${currentProduct.id}, Name=${currentProduct.name}');
     loadProductDetails();
   }
 
@@ -138,11 +126,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         errorMessage = null;
       });
     } catch (e) {
-      print('Load Product Details Error: $e'); // Debug
+      print('Load Product Details Error: $e');
       setState(() {
         errorMessage = e.toString();
       });
-
       if (e.toString().contains('Unauthorized')) {
         _handleUnauthorized();
       }
@@ -217,7 +204,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     );
 
                     final result = await updateProductInApi(updatedProduct);
-
                     setState(() => currentProduct = result);
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -271,20 +257,34 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       try {
         await deleteProductFromApi(currentProduct.id);
         Navigator.pop(context, true);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Xóa sản phẩm thành công')),
-        );
+        _showSuccessSnackbar('Xóa sản phẩm thành công');
       } catch (e) {
         setState(() => isLoading = false);
         if (e.toString().contains('Unauthorized')) {
           _handleUnauthorized();
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Lỗi xóa sản phẩm: $e')),
-          );
+          _showErrorSnackbar('Failed to delete product');
         }
       }
     }
+  }
+
+  void _showSuccessSnackbar(String message) {
+    Get.snackbar(
+      'Thành công',
+      message,
+      backgroundColor: BaseUI.successColor,
+      colorText: Colors.white,
+    );
+  }
+
+  void _showErrorSnackbar(String message) {
+    Get.snackbar(
+      'Lỗi',
+      message,
+      backgroundColor: BaseUI.errorColor,
+      colorText: Colors.white,
+    );
   }
 
   Widget _inputField(
