@@ -18,7 +18,10 @@ class ProductRepository {
     );
 
     return BaseResponseList<Product>.fromJson(
-      response,
+      {
+        ...response,
+        'data': response['data']['data'] ?? [],
+      },
           (json) => Product.fromJson(json),
     );
   }
