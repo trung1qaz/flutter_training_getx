@@ -2,17 +2,16 @@ import 'package:get/get.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:sds_mobile_training_p2/data/user.dart';
-import '../../core/api_client.dart';
 import '../../core/constants.dart';
+import '../../core/ui/base_getx_controller.dart';
 import '../product/product_controller.dart';
+import 'auth_repository.dart';
 
-class AuthController extends GetxController {
-  final isLoading = false.obs;
+class AuthController extends BaseGetxController {
   var isAuthenticated = false.obs;
   var token = Rxn<String>();
   var currentUser = Rxn<User>();
   var recentUsers = <User>[].obs;
-  var errorMessage = ''.obs;
 
   final taxCtrl = TextEditingController();
   final userCtrl = TextEditingController();
@@ -38,7 +37,7 @@ class AuthController extends GetxController {
     try {
       final box = Hive.box('authBox');
       final savedToken = box.get('authToken');
-      final userList = box.get('userList', defaultValue: <Map>[]);
+      final userList = box.get('userList', defaultValue: []);
 
       if (savedToken != null) {
         token.value = savedToken;
@@ -60,7 +59,7 @@ class AuthController extends GetxController {
         );
       }
     } catch (e) {
-      print('Error initializing auth: $e');
+      handleError(e, customMessage: 'Lỗi khởi tạo xác thực');
     }
   }
 
@@ -71,21 +70,18 @@ class AuthController extends GetxController {
     }
 
     try {
-      isLoading.value = true;
-      errorMessage.value = '';
+      setLoading(true);
+      clearError();
 
-      // Use the new ApiClient method that returns raw dynamic data
-      final response = await ApiClient.post(
-        AppConstants.loginEndpoint,
-        data: {
-          "tax_code": int.tryParse(taxCtrl.text),
-          "user_name": userCtrl.text.trim(),
-          "password": passCtrl.text.trim(),
-        },
+      final response = await AuthRepository.login(
+        taxCode: int.parse(taxCtrl.text),
+        userName: userCtrl.text.trim(),
+        password: passCtrl.text.trim(),
       );
 
       if (response['success'] == true && response['data'] != null) {
-        final data = response['data'] as Map<String, dynamic>;
+        final data = response['data'] as Map;
+
         if (data["success"] == true) {
           token.value = data["data"]["token"];
           isAuthenticated.value = true;
@@ -94,8 +90,10 @@ class AuthController extends GetxController {
             taxCtrl: int.parse(taxCtrl.text),
             userCtrl: userCtrl.text,
           );
+
           currentUser.value = newUser;
 
+          // Update recent users
           recentUsers.removeWhere((u) =>
           u.taxCtrl == newUser.taxCtrl && u.userCtrl == newUser.userCtrl);
           recentUsers.add(newUser);
@@ -112,36 +110,19 @@ class AuthController extends GetxController {
             'user_name': userCtrl.text,
           });
 
+          handleSuccess('Đăng nhập thành công');
           Get.offAllNamed('/home');
-          Get.snackbar(
-            'Thành công',
-            'Đăng nhập thành công',
-            backgroundColor: Colors.green,
-            colorText: Colors.white,
-          );
         } else {
-          errorMessage.value = "Đăng nhập thất bại, sai tên đăng nhập hoặc mật khẩu";
-          _showErrorSnackbar(errorMessage.value);
+          handleError('Đăng nhập thất bại, sai tên đăng nhập hoặc mật khẩu');
         }
       } else {
-        errorMessage.value = response['error'] ?? "Đăng nhập thất bại";
-        _showErrorSnackbar(errorMessage.value);
+        handleError(response['error'] ?? 'Đăng nhập thất bại');
       }
     } catch (e) {
-      errorMessage.value = "Lỗi kết nối: ${e.toString()}";
-      _showErrorSnackbar(errorMessage.value);
+      handleError(e, customMessage: 'Lỗi kết nối: ${e.toString()}');
     } finally {
-      isLoading.value = false;
+      setLoading(false);
     }
-  }
-
-  void _showErrorSnackbar(String message) {
-    Get.snackbar(
-      'Lỗi',
-      message,
-      backgroundColor: Colors.red,
-      colorText: Colors.white,
-    );
   }
 
   void showRecentLoginsDialog() {
@@ -203,6 +184,7 @@ class AuthController extends GetxController {
     final box = Hive.box('authBox');
     box.delete('authToken');
     box.delete('currentUser');
+
     if (Get.isRegistered<ProductController>()) {
       Get.delete<ProductController>();
     }
@@ -215,10 +197,9 @@ class AuthController extends GetxController {
     userCtrl.clear();
     passCtrl.clear();
     autovalidateMode.value = AutovalidateMode.disabled;
-    errorMessage.value = '';
+    clearError();
   }
 
-  // Validation methods using constants
   String? validateTaxCode(String? value) {
     if (value == null || value.trim().length != AppConstants.taxCodeLength) {
       return "Mã số thuế phải có ${AppConstants.taxCodeLength} chữ số";

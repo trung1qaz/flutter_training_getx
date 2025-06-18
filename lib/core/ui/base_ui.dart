@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 
 abstract class BaseUI {
-  // Color scheme
   static const primaryColor = Colors.orange;
   static const errorColor = Colors.red;
   static const successColor = Colors.green;
   static const backgroundColor = Colors.white;
 
-  // Text styles
   static const titleStyle = TextStyle(
     fontSize: 24,
     fontWeight: FontWeight.bold,

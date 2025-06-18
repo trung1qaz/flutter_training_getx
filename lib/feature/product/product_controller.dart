@@ -5,22 +5,7 @@ import 'package:sds_mobile_training_p2/feature/product/product_detail_screen.dar
 import 'package:sds_mobile_training_p2/feature/product/product_repository.dart';
 import '../../core/ui/base_ui.dart';
 import '../auth/auth_controller.dart';
-
-class Product {
-  final int id;
-  final String name;
-  final int price;
-  final int quantity;
-  final String cover;
-
-  Product({
-    required this.id,
-    required this.name,
-    required this.price,
-    required this.quantity,
-    required this.cover,
-  });
-}
+import 'product.dart';
 
 class ProductController extends GetxController {
   var products = <Product>[].obs;
@@ -33,6 +18,7 @@ class ProductController extends GetxController {
   final priceCtrl = TextEditingController();
   final quantityCtrl = TextEditingController();
   final coverCtrl = TextEditingController();
+
   var isSubmitting = false.obs;
 
   @override
@@ -57,23 +43,10 @@ class ProductController extends GetxController {
 
       final response = await ProductRepository.getProducts(page: 2, size: 10);
 
-      if (response['success'] == true && response['data'] != null) {
-        final responseData = response['data'] as Map<String, dynamic>;
-        final List productListData = responseData['data'] ?? [];
-
-        final productList = productListData.map((item) {
-          return Product(
-            id: _parseToInt(item['id']),
-            name: item['name']?.toString() ?? '',
-            price: _parseToInt(item['price']),
-            quantity: _parseToInt(item['quantity']),
-            cover: item['cover']?.toString() ?? '',
-          );
-        }).toList();
-
-        products.value = productList;
+      if (response.success) {
+        products.value = response.data;
       } else {
-        errorMessage.value = response['error'] ?? 'Failed to load products';
+        errorMessage.value = response.error ?? 'Failed to load products';
         _showErrorSnackbar(errorMessage.value);
       }
     } catch (e) {
@@ -85,21 +58,11 @@ class ProductController extends GetxController {
     }
   }
 
-  // Helper method to safely parse integers
-  int _parseToInt(dynamic value) {
-    if (value is int) return value;
-    if (value is String) {
-      return int.tryParse(value) ?? 0;
-    }
-    return 0;
-  }
-
   Future<void> addProduct() async {
     if (!formKey.currentState!.validate()) return;
 
     try {
       isSubmitting.value = true;
-
       final response = await ProductRepository.addProduct(
         name: nameCtrl.text.trim(),
         price: int.parse(priceCtrl.text),
@@ -153,7 +116,6 @@ class ProductController extends GetxController {
     if (shouldDelete == true) {
       try {
         final response = await ProductRepository.deleteProduct(product.id);
-
         if (response['success'] == true) {
           products.removeAt(index);
           _showSuccessSnackbar('Xóa sản phẩm thành công');
@@ -240,7 +202,7 @@ class ProductController extends GetxController {
     final box = Hive.box('authBox');
     box.delete('authToken');
     box.delete('currentUser');
-    if (Get.isRegistered<AuthController>()) {
+    if (Get.isRegistered<AuthController>()) { // Fixed type
       Get.find<AuthController>().logout();
     }
     Get.offAllNamed('/login');
