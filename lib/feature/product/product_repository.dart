@@ -9,21 +9,46 @@ class ProductRepository {
     int page = 1,
     int size = 10,
   }) async {
-    final response = await ApiClient.get(
-      AppConstants.productsEndpoint,
-      queryParameters: {
-        'page': page,
-        'size': size,
-      },
-    );
+    try {
+      final response = await ApiClient.get(
+        AppConstants.productsEndpoint,
+        queryParameters: {
+          'page': page,
+          'size': size,
+        },
+      );
 
-    return BaseResponseList<Product>.fromJson(
-      {
-        ...response,
-        'data': response['data']['data'] ?? [],
-      },
-          (json) => Product.fromJson(json),
-    );
+      print('Raw API Response: $response');
+
+      if (response['success'] == true && response['data'] != null) {
+        final dataList = response['data']['data'] ?? response['data'];
+        print('Product data list: $dataList');
+
+        return BaseResponseList.fromJson(
+          {
+            'success': true,
+            'message': 'Products loaded successfully',
+            'data': dataList,
+          },
+              (json) => Product.fromJson(json),
+        );
+      } else {
+        return BaseResponseList<Product>(
+          success: false,
+          message: response['error'] ?? 'Failed to load products',
+          data: [],
+          error: response['error'],
+        );
+      }
+    } catch (e) {
+      print('Repository Error: $e');
+      return BaseResponseList<Product>(
+        success: false,
+        message: 'Error loading products: $e',
+        data: [],
+        error: e.toString(),
+      );
+    }
   }
 
   static Future<Map<String, dynamic>> addProduct({
@@ -32,18 +57,15 @@ class ProductRepository {
     required int quantity,
     required String cover,
   }) async {
-    final productData = {
-      'name': name,
-      'price': price,
-      'quantity': quantity,
-      'cover': cover,
-    };
-
     final response = await ApiClient.post(
       AppConstants.productsEndpoint,
-      data: jsonEncode(productData),
+      data: jsonEncode({
+        'name': name,
+        'price': price,
+        'quantity': quantity,
+        'cover': cover,
+      }),
     );
-
     return response;
   }
 
@@ -54,18 +76,15 @@ class ProductRepository {
     required int quantity,
     required String cover,
   }) async {
-    final productData = {
-      'name': name,
-      'price': price,
-      'quantity': quantity,
-      'cover': cover,
-    };
-
     final response = await ApiClient.put(
       '${AppConstants.productsEndpoint}/$id',
-      data: jsonEncode(productData),
+      data: jsonEncode({
+        'name': name,
+        'price': price,
+        'quantity': quantity,
+        'cover': cover,
+      }),
     );
-
     return response;
   }
 
@@ -73,7 +92,6 @@ class ProductRepository {
     final response = await ApiClient.delete(
       '${AppConstants.productsEndpoint}/$productId',
     );
-
     return response;
   }
 
@@ -81,7 +99,6 @@ class ProductRepository {
     final response = await ApiClient.get(
       '${AppConstants.productsEndpoint}/$productId',
     );
-
     return response;
   }
 }

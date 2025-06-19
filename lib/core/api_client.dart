@@ -65,4 +65,53 @@ class ApiClient {
     );
     return response.data;
   }
+
+  // Generic method with parser for typed responses
+  static Future<T> getWithParser<T>(
+      String path,
+      T Function(dynamic) fromJson, {
+        Map<String, dynamic>? queryParameters,
+      }) async {
+    final response = await _dio.get(
+      path,
+      queryParameters: queryParameters,
+      options: _options,
+    );
+    return fromJson(response.data);
+  }
+
+  static Future<T> postWithParser<T>(
+      String path,
+      T Function(dynamic) fromJson, {
+        Map<String, dynamic>? queryParameters,
+        Object? data,
+      }) async {
+    final response = await _dio.post(
+      path,
+      data: data,
+      queryParameters: queryParameters,
+      options: _options,
+    );
+    return fromJson(response.data);
+  }
+
+  static Future<T> putWithParser<T>(
+      String path,
+      T Function(dynamic) fromJson, {
+        Map<String, dynamic>? queryParameters,
+        Object? data,
+      }) async {
+    final response = await _dio.put(
+      path,
+      data: data,
+      queryParameters: queryParameters,
+      options: _options,
+    );
+    return fromJson(response.data);
+  }
+
+  static Future<bool> deleteWithSuccess(String path) async {
+    final response = await _dio.delete(path, options: _options);
+    return response.statusCode == 200 || response.statusCode == 204;
+  }
 }

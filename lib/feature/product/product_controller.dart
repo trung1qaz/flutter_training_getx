@@ -18,12 +18,12 @@ class ProductController extends GetxController {
   final priceCtrl = TextEditingController();
   final quantityCtrl = TextEditingController();
   final coverCtrl = TextEditingController();
-
   var isSubmitting = false.obs;
 
   @override
   void onInit() {
     super.onInit();
+    print('ProductController initialized');
     fetchData();
   }
 
@@ -38,23 +38,29 @@ class ProductController extends GetxController {
 
   Future<void> fetchData() async {
     try {
+      print('Starting fetchData...');
       isLoading.value = true;
       errorMessage.value = '';
 
-      final response = await ProductRepository.getProducts(page: 2, size: 10);
+      final response = await ProductRepository.getProducts(page: 1, size: 10);
+      print('Repository response: success=${response.success}, data length=${response.data.length}');
 
       if (response.success) {
         products.value = response.data;
+        products.refresh(); // Force UI update
+        print('Products loaded: ${products.length} items');
       } else {
         errorMessage.value = response.error ?? 'Failed to load products';
+        print('Error loading products: ${errorMessage.value}');
         _showErrorSnackbar(errorMessage.value);
       }
     } catch (e) {
       errorMessage.value = 'Error loading products: ${e.toString()}';
-      _showErrorSnackbar(errorMessage.value);
       print('Fetch data error: $e');
+      _showErrorSnackbar(errorMessage.value);
     } finally {
       isLoading.value = false;
+      print('fetchData completed. Loading: ${isLoading.value}, Products: ${products.length}');
     }
   }
 
@@ -81,6 +87,7 @@ class ProductController extends GetxController {
         );
 
         products.add(newProduct);
+        products.refresh();
         Get.back();
         _showSuccessSnackbar('Thêm sản phẩm thành công');
       } else {
@@ -118,6 +125,7 @@ class ProductController extends GetxController {
         final response = await ProductRepository.deleteProduct(product.id);
         if (response['success'] == true) {
           products.removeAt(index);
+          products.refresh();
           _showSuccessSnackbar('Xóa sản phẩm thành công');
         } else {
           _showErrorSnackbar(response['error'] ?? 'Failed to delete product');
@@ -202,7 +210,7 @@ class ProductController extends GetxController {
     final box = Hive.box('authBox');
     box.delete('authToken');
     box.delete('currentUser');
-    if (Get.isRegistered<AuthController>()) { // Fixed type
+    if (Get.isRegistered<AuthController>()) {
       Get.find<AuthController>().logout();
     }
     Get.offAllNamed('/login');

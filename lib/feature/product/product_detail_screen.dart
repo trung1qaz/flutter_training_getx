@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:sds_mobile_training_p2/feature/product/product_controller.dart';
 import 'package:sds_mobile_training_p2/feature/product/product_repository.dart';
 import '../../core/ui/base_ui.dart';
 import 'product.dart';
