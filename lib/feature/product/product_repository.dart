@@ -12,26 +12,23 @@ class ProductRepository {
     try {
       final response = await ApiClient.get(
         AppConstants.productsEndpoint,
-        queryParameters: {
-          'page': page,
-          'size': size,
-        },
+        queryParameters: {'page': page, 'size': size},
       );
 
       print('Raw API Response: $response');
 
       if (response['success'] == true && response['data'] != null) {
-        final dataList = response['data']['data'] ?? response['data'];
+        dynamic data = response['data'];
+        final dataList = (data is Map && data.containsKey('data'))
+            ? data['data']
+            : (data is List ? data : []);
         print('Product data list: $dataList');
 
-        return BaseResponseList.fromJson(
-          {
-            'success': true,
-            'message': 'Products loaded successfully',
-            'data': dataList,
-          },
-              (json) => Product.fromJson(json),
-        );
+        return BaseResponseList.fromJson({
+          'success': true,
+          'message': 'Products loaded successfully',
+          'data': dataList,
+        }, (json) => Product.fromJson(json));
       } else {
         return BaseResponseList<Product>(
           success: false,

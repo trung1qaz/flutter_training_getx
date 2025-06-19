@@ -66,7 +66,6 @@ class ApiClient {
     return response.data;
   }
 
-  // Generic method with parser for typed responses
   static Future<T> getWithParser<T>(
       String path,
       T Function(dynamic) fromJson, {
