@@ -1,14 +1,22 @@
 class LoginResponse {
-  final String token;
+  final String? token;
+  final bool? success;
+  final String? message;
 
-  LoginResponse({required this.token});
+  LoginResponse({required this.token, this.success, this.message});
 
   factory LoginResponse.fromJson(Map<String, dynamic> json) {
-    if (json['token'] == null) {
-      throw Exception('Token is missing in the response');
-    }
-    return LoginResponse(token: json['token'] as String);
+    final data = json['data'] as Map<String, dynamic>?;
+    return LoginResponse(
+      token: data?['token'] as String?,
+      success: json['success'] as bool?,
+      message: json['message'] as String?,
+    );
   }
 
-  Map<String, dynamic> toJson() => {'token': token};
+  Map<String, dynamic> toJson() => {
+    'token': token,
+    'success': success,
+    'message': message,
+  };
 }

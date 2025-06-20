@@ -44,11 +44,13 @@ class AuthController extends BaseGetxController {
         isAuthenticated.value = true;
       }
 
-      recentUsers.value = List<User>.from(
-        userList.map((userData) => User(
-          taxCtrl: userData['tax_code'],
-          userCtrl: userData['user_name'],
-        )),
+      recentUsers.value = List.from(
+        userList.map(
+          (userData) => User(
+            taxCtrl: userData['tax_code'],
+            userCtrl: userData['user_name'],
+          ),
+        ),
       );
 
       final currentUserData = box.get('currentUser');
@@ -63,7 +65,7 @@ class AuthController extends BaseGetxController {
     }
   }
 
-  Future<void> login() async {
+  Future login() async {
     if (!formKey.currentState!.validate()) {
       autovalidateMode.value = AutovalidateMode.always;
       return;
@@ -80,40 +82,51 @@ class AuthController extends BaseGetxController {
       );
 
       if (response.success == true && response.data != null) {
-        final data = response.data as Map;
+        final loginResponse = response.data!;
 
-        if (data["success"] == true) {
-          token.value = data["data"]["token"];
+        if (loginResponse.success == true &&
+            loginResponse.token != null &&
+            loginResponse.token!.isNotEmpty) {
+          token.value = loginResponse.token;
           isAuthenticated.value = true;
 
           final newUser = User(
             taxCtrl: int.parse(taxCtrl.text),
             userCtrl: userCtrl.text,
           );
-
           currentUser.value = newUser;
 
-          // Update recent users
-          recentUsers.removeWhere((u) =>
-          u.taxCtrl == newUser.taxCtrl && u.userCtrl == newUser.userCtrl);
+          recentUsers.removeWhere(
+            (u) =>
+                u.taxCtrl == newUser.taxCtrl && u.userCtrl == newUser.userCtrl,
+          );
           recentUsers.add(newUser);
 
-          // Save to Hive
           final box = Hive.box('authBox');
-          box.put('userList', recentUsers.map((user) => {
-            'tax_code': user.taxCtrl,
-            'user_name': user.userCtrl,
-          }).toList());
+          box.put(
+            'userList',
+            recentUsers
+                .map(
+                  (user) => {
+                    'tax_code': user.taxCtrl,
+                    'user_name': user.userCtrl,
+                  },
+                )
+                .toList(),
+          );
           box.put('authToken', token.value);
           box.put('currentUser', {
             'tax_code': int.parse(taxCtrl.text),
             'user_name': userCtrl.text,
           });
 
-          handleSuccess('Đăng nhập thành công');
+          handleSuccess(loginResponse.message ?? 'Đăng nhập thành công');
           Get.offAllNamed('/home');
         } else {
-          handleError('Đăng nhập thất bại, sai tên đăng nhập hoặc mật khẩu');
+          handleError(
+            loginResponse.message ??
+                'Đăng nhập thất bại, sai tên đăng nhập hoặc mật khẩu',
+          );
         }
       } else {
         handleError(response.error ?? 'Đăng nhập thất bại');
@@ -141,22 +154,24 @@ class AuthController extends BaseGetxController {
         title: const Text('Chọn tài khoản'),
         content: SizedBox(
           width: double.maxFinite,
-          child: Obx(() => ListView.builder(
-            shrinkWrap: true,
-            itemCount: recentUsers.length,
-            itemBuilder: (context, index) {
-              final user = recentUsers[index];
-              return ListTile(
-                title: Text(user.userCtrl),
-                subtitle: Text(user.taxCtrl.toString()),
-                trailing: IconButton(
-                  icon: const Icon(Icons.backspace_outlined),
-                  onPressed: () => removeRecentUser(index),
-                ),
-                onTap: () => selectRecentUser(user),
-              );
-            },
-          )),
+          child: Obx(
+            () => ListView.builder(
+              shrinkWrap: true,
+              itemCount: recentUsers.length,
+              itemBuilder: (context, index) {
+                final user = recentUsers[index];
+                return ListTile(
+                  title: Text(user.userCtrl),
+                  subtitle: Text(user.taxCtrl.toString()),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.backspace_outlined),
+                    onPressed: () => removeRecentUser(index),
+                  ),
+                  onTap: () => selectRecentUser(user),
+                );
+              },
+            ),
+          ),
         ),
       ),
     );
@@ -171,10 +186,12 @@ class AuthController extends BaseGetxController {
   void removeRecentUser(int index) {
     recentUsers.removeAt(index);
     final box = Hive.box('authBox');
-    box.put('userList', recentUsers.map((user) => {
-      'tax_code': user.taxCtrl,
-      'user_name': user.userCtrl,
-    }).toList());
+    box.put(
+      'userList',
+      recentUsers
+          .map((user) => {'tax_code': user.taxCtrl, 'user_name': user.userCtrl})
+          .toList(),
+    );
   }
 
   void logout() {
