@@ -7,20 +7,11 @@ class ProductRepository {
     int page = 1,
     int size = 10,
   }) async {
-    try {
       final response = await ApiClient.get(
         AppConstants.productsEndpoint,
         queryParameters: {'page': page, 'size': size},
       );
       return response;
-    } catch (e) {
-      print('Repository Error: $e');
-      return {
-        'success': false,
-        'error': e.toString(),
-        'data': null,
-      };
-    }
   }
 
   static Future<Map<String, dynamic>> addProduct({
