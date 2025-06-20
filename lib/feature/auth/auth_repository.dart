@@ -8,46 +8,28 @@ class AuthRepository {
     required String userName,
     required String password,
   }) async {
-    try {
-      final response = await ApiClient.post(
-        AppConstants.loginEndpoint,
-        data: {
-          "tax_code": taxCode,
-          "user_name": userName,
-          "password": password,
-        },
-      );
-      return ApiErrorHandler.createSuccessResponse(response);
-    } catch (e) {
-      return ApiErrorHandler.createErrorResponse(e);
-    }
+    final response = await ApiClient.post(
+      AppConstants.loginEndpoint,
+      data: {"tax_code": taxCode, "user_name": userName, "password": password},
+    );
+    return ApiErrorHandler.createSuccessResponse(response);
   }
 
   static Future<Map<String, dynamic>> logout() async {
-    try {
-      final response = await ApiClient.post(
-        AppConstants.logoutEndpoint,
-        data: {},
-      );
-      return ApiErrorHandler.createSuccessResponse(response);
-    } catch (e) {
-      return ApiErrorHandler.createErrorResponse(e);
-    }
+    final response = await ApiClient.post(
+      AppConstants.logoutEndpoint,
+      data: {},
+    );
+    return ApiErrorHandler.createSuccessResponse(response);
   }
 
   static Future<Map<String, dynamic>> refreshToken({
     required String token,
   }) async {
-    try {
-      final response = await ApiClient.post(
-        AppConstants.refreshTokenEndpoint,
-        data: {
-          "token": token,
-        },
-      );
-      return ApiErrorHandler.createSuccessResponse(response);
-    } catch (e) {
-      return ApiErrorHandler.createErrorResponse(e);
-    }
+    final response = await ApiClient.post(
+      AppConstants.refreshTokenEndpoint,
+      data: {"token": token},
+    );
+    return ApiErrorHandler.createSuccessResponse(response);
   }
 }

@@ -1,11 +1,9 @@
 import 'dart:convert';
 import '../../core/api_client.dart';
 import '../../core/constants.dart';
-import '../../core/ui/base_response_list.dart';
-import 'product.dart';
 
 class ProductRepository {
-  static Future<BaseResponseList<Product>> getProducts({
+  static Future<Map<String, dynamic>> getProducts({
     int page = 1,
     int size = 10,
   }) async {
@@ -14,37 +12,14 @@ class ProductRepository {
         AppConstants.productsEndpoint,
         queryParameters: {'page': page, 'size': size},
       );
-
-      print('Raw API Response: $response');
-
-      if (response['success'] == true && response['data'] != null) {
-        dynamic data = response['data'];
-        final dataList = (data is Map && data.containsKey('data'))
-            ? data['data']
-            : (data is List ? data : []);
-        print('Product data list: $dataList');
-
-        return BaseResponseList.fromJson({
-          'success': true,
-          'message': 'Products loaded successfully',
-          'data': dataList,
-        }, (json) => Product.fromJson(json));
-      } else {
-        return BaseResponseList<Product>(
-          success: false,
-          message: response['error'] ?? 'Failed to load products',
-          data: [],
-          error: response['error'],
-        );
-      }
+      return response;
     } catch (e) {
       print('Repository Error: $e');
-      return BaseResponseList<Product>(
-        success: false,
-        message: 'Error loading products: $e',
-        data: [],
-        error: e.toString(),
-      );
+      return {
+        'success': false,
+        'error': e.toString(),
+        'data': null,
+      };
     }
   }
 

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:sds_mobile_training_p2/feature/product/product_detail_screen.dart';
 import 'package:sds_mobile_training_p2/feature/product/product_repository.dart';
+import '../../core/ui/base_response.dart';
 import '../../core/ui/base_ui.dart';
 import '../auth/auth_controller.dart';
 import 'product.dart';
@@ -38,29 +39,36 @@ class ProductController extends GetxController {
 
   Future<void> fetchData() async {
     try {
-      print('Starting fetchData...');
       isLoading.value = true;
       errorMessage.value = '';
 
       final response = await ProductRepository.getProducts(page: 1, size: 10);
-      print('Repository response: success=${response.success}, data length=${response.data.length}');
 
-      if (response.success) {
-        products.value = response.data;
-        products.refresh(); // Force UI update
+      if (response['success'] == true && response['data'] != null) {
+        dynamic data = response['data'];
+        final dataList = (data is Map && data.containsKey('data'))
+            ? data['data']
+            : (data is List ? data : []);
+        print('Product data list: $dataList');
+
+        final baseResponse = BaseResponseList<Product>.fromJson({
+          'success': true,
+          'message': 'Products loaded successfully',
+          'data': dataList,
+        }, (json) => Product.fromJson(json));
+
+        products.value = baseResponse.data;
+        products.refresh();
         print('Products loaded: ${products.length} items');
       } else {
-        errorMessage.value = response.error ?? 'Failed to load products';
-        print('Error loading products: ${errorMessage.value}');
+        errorMessage.value = response['error'] ?? 'Failed to load products';
         _showErrorSnackbar(errorMessage.value);
       }
     } catch (e) {
-      errorMessage.value = 'Error loading products: ${e.toString()}';
-      print('Fetch data error: $e');
+      errorMessage.value = 'Error loading products: $e';
       _showErrorSnackbar(errorMessage.value);
     } finally {
       isLoading.value = false;
-      print('fetchData completed. Loading: ${isLoading.value}, Products: ${products.length}');
     }
   }
 
