@@ -79,8 +79,8 @@ class AuthController extends BaseGetxController {
         password: passCtrl.text.trim(),
       );
 
-      if (response['success'] == true && response['data'] != null) {
-        final data = response['data'] as Map;
+      if (response.success == true && response.data != null) {
+        final data = response.data as Map;
 
         if (data["success"] == true) {
           token.value = data["data"]["token"];
@@ -116,7 +116,7 @@ class AuthController extends BaseGetxController {
           handleError('Đăng nhập thất bại, sai tên đăng nhập hoặc mật khẩu');
         }
       } else {
-        handleError(response['error'] ?? 'Đăng nhập thất bại');
+        handleError(response.error ?? 'Đăng nhập thất bại');
       }
     } catch (e) {
       handleError(e, customMessage: 'Lỗi kết nối: ${e.toString()}');
