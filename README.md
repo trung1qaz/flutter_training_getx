@@ -1,4 +1,4 @@
-# getx
+# sds_mobile_training_p2
 
 A new Flutter project.
 
